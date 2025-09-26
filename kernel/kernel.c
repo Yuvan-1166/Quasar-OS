@@ -1,5 +1,9 @@
 // Quasar-OS Kernel Entry Point
-// Basic kernel that runs in 32-bit protected mode
+// Basic kernel that runs in 32-bit protected mode with interrupt support
+
+#include "interrupts.h"
+#include "timer.h"
+#include "keyboard.h"
 
 // VGA text mode buffer
 #define VGA_MEMORY 0xB8000
@@ -43,6 +47,8 @@ void terminal_putchar(char c);
 void terminal_write(const char* data, unsigned int size);
 void terminal_writestring(const char* data);
 void terminal_setcolor(unsigned char color);
+void terminal_write_hex(unsigned int value);
+void terminal_write_dec(unsigned int value);
 unsigned int strlen(const char* str);
 
 // Kernel entry point (called by bootloader)
@@ -52,30 +58,39 @@ void kernel_main(void) {
     
     // Display welcome message
     terminal_setcolor(VGA_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
-    terminal_writestring("Welcome to Quasar-OS Kernel!\n");
-    terminal_writestring("=============================\n\n");
+    terminal_writestring("Welcome to Quasar-OS Kernel v2.0!\n");
+    terminal_writestring("===================================\n\n");
     
     terminal_setcolor(VGA_COLOR(COLOR_WHITE, COLOR_BLACK));
     terminal_writestring("Kernel loaded successfully in 32-bit protected mode\n");
-    terminal_writestring("Memory management: Not implemented yet\n");
-    terminal_writestring("Process management: Not implemented yet\n");
-    terminal_writestring("File system: Not implemented yet\n\n");
     
+    // Initialize interrupt system
     terminal_setcolor(VGA_COLOR(COLOR_YELLOW, COLOR_BLACK));
-    terminal_writestring("System Status: Running\n");
-    terminal_writestring("Architecture: x86 32-bit\n");
-    terminal_writestring("Boot Stage: Kernel initialized\n\n");
+    terminal_writestring("\nInitializing interrupt system...\n");
+    init_interrupts();
+    terminal_writestring("Interrupts initialized successfully!\n");
+    
+    // Initialize timer (100 Hz)
+    terminal_writestring("\nInitializing system timer...\n");
+    init_timer(100);
+    
+    // Initialize keyboard
+    terminal_writestring("\nInitializing keyboard driver...\n");
+    init_keyboard();
     
     terminal_setcolor(VGA_COLOR(COLOR_LIGHT_CYAN, COLOR_BLACK));
-    terminal_writestring("Next steps:\n");
-    terminal_writestring("1. Implement interrupt handling\n");
-    terminal_writestring("2. Set up memory management\n");
-    terminal_writestring("3. Create process scheduler\n\n");
+    terminal_writestring("\nSystem Status: Running with interrupts enabled\n");
+    terminal_writestring("Architecture: x86 32-bit\n");
+    terminal_writestring("Features: Timer, Keyboard, VGA Text Mode\n\n");
     
-    terminal_setcolor(VGA_COLOR(COLOR_LIGHT_RED, COLOR_BLACK));
-    terminal_writestring("Kernel halted. System is running but idle.\n");
+    terminal_setcolor(VGA_COLOR(COLOR_LIGHT_GREEN, COLOR_BLACK));
+    terminal_writestring("Quasar-OS is now interactive! Try typing something:\n");
+    terminal_writestring("> ");
     
-    // Infinite loop - kernel is running but doing nothing
+    // Enable interrupts
+    __asm__ volatile ("sti");
+    
+    // Infinite loop - kernel is running and responsive to interrupts
     while(1) {
         // In a real OS, this would be the idle loop
         // We could implement power management here
@@ -151,4 +166,39 @@ unsigned int strlen(const char* str) {
         len++;
     }
     return len;
+}
+
+// Write hexadecimal number
+void terminal_write_hex(unsigned int value) {
+    char hex_chars[] = "0123456789ABCDEF";
+    char buffer[9];  // 8 hex digits + null terminator
+    buffer[8] = '\0';
+    
+    for (int i = 7; i >= 0; i--) {
+        buffer[i] = hex_chars[value & 0xF];
+        value >>= 4;
+    }
+    
+    terminal_writestring("0x");
+    terminal_writestring(buffer);
+}
+
+// Write decimal number
+void terminal_write_dec(unsigned int value) {
+    if (value == 0) {
+        terminal_writestring("0");
+        return;
+    }
+    
+    char buffer[11];  // Max 10 digits for 32-bit int + null terminator
+    int pos = 10;
+    buffer[pos] = '\0';
+    
+    while (value > 0 && pos > 0) {
+        pos--;
+        buffer[pos] = '0' + (value % 10);
+        value /= 10;
+    }
+    
+    terminal_writestring(&buffer[pos]);
 }

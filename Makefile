@@ -38,8 +38,28 @@ $(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c | $(BUILD_DIR)
 	@echo "Building kernel..."
 	$(CC) $(CC_FLAGS) $< -o $@
 
+# Build interrupt system
+$(BUILD_DIR)/interrupts.o: $(KERNEL_DIR)/interrupts.c | $(BUILD_DIR)
+	@echo "Building interrupt system..."
+	$(CC) $(CC_FLAGS) $< -o $@
+
+# Build interrupt assembly stubs
+$(BUILD_DIR)/interrupt.o: $(KERNEL_DIR)/interrupt.asm | $(BUILD_DIR)
+	@echo "Building interrupt stubs..."
+	$(ASM) $(ASM_ELF_FLAGS) $< -o $@
+
+# Build timer driver
+$(BUILD_DIR)/timer.o: $(KERNEL_DIR)/timer.c | $(BUILD_DIR)
+	@echo "Building timer driver..."
+	$(CC) $(CC_FLAGS) $< -o $@
+
+# Build keyboard driver
+$(BUILD_DIR)/keyboard.o: $(KERNEL_DIR)/keyboard.c | $(BUILD_DIR)
+	@echo "Building keyboard driver..."
+	$(CC) $(CC_FLAGS) $< -o $@
+
 # Link kernel
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/entry.o $(BUILD_DIR)/kernel.o
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/entry.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/interrupts.o $(BUILD_DIR)/interrupt.o $(BUILD_DIR)/timer.o $(BUILD_DIR)/keyboard.o
 	@echo "Linking kernel..."
 	$(LD) $(LD_FLAGS) $^ -o $(BUILD_DIR)/kernel.elf
 	objcopy -O binary $(BUILD_DIR)/kernel.elf $@
